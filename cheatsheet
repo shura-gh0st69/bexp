@@ -1,0 +1,3 @@
+rax |  Function  |         rdi          |           rsi            |           rdx
+59  | sys_execve | const char *filename | const char *const argv[] | const char *const envp[] 
+execve("/bin/sh", 0, 0).
