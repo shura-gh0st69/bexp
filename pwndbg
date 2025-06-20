@@ -1,1 +1,4 @@
 rop --grep "pop rdi"
+
+heap_notes
+vis -> view heap chunks 
