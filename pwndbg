@@ -1,4 +1,13 @@
 rop --grep "pop rdi"
+info address robobirdNames -> address of variale 
+p/x (0x6020a0 - 0x602060) / sizeof(long) -> calculating index (robobirdNames + (long)local_7c * 8);
 
 heap_notes
 vis -> view heap chunks 
+
+p user -> variables 
+ptype user -> struct
+dq &user
+
+f 4 -> if signal_fault_error
+context code -> view codeline

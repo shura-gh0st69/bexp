@@ -3,6 +3,7 @@ import os
 from pwn import *
 
 elf = context.binary = ELF("house_of_force")
+context.terminal = ["tmux", "splitw", "-h"]
 libc = elf.libc
 
 gs = '''
