@@ -1,0 +1,12 @@
+# Set the new remote origin (replace YOUR_USERNAME and REPO_NAME)
+git remote add origin https://github.com/YOUR_USERNAME/bexp.git
+
+# Add all files (if not already added)
+git add .
+
+# Commit the changes
+git commit -m "Initial commit"
+
+# Push to GitHub (main branch)
+git branch -M main
+git push -u origin main
